@@ -1,5 +1,10 @@
-import pygame
+# src/gui/visualizer.py
 import sys
+import os
+# Automatically find the project root directory and add it to Python search path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+
+import pygame
 from src.engine.board import Board2048
 
 # Colors palette matching the original 2048 game
@@ -35,7 +40,7 @@ PADDING = 12
 class GameVisualizer:
     def __init__(self):
         pygame.init()
-        pygame.display.set_caption("EngReflex AI - 2048 Gym")
+        pygame.display.set_caption("EngReflex AI - 2048")
         self.screen = pygame.display.set_mode((WINDOW_SIZE, WINDOW_SIZE))
         self.clock = pygame.time.Clock()
         self.board = Board2048()
