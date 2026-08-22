@@ -1,10 +1,26 @@
-# Python-generated files
+# Python bytecode and cache
 __pycache__/
-*.py[oc]
-build/
-dist/
-wheels/
-*.egg-info
+*.py[cod]
+*$py.class
 
-# Virtual environments
-.venv
+# Virtual environments (uv, venv)
+.venv/
+venv/
+ENV/
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Deep Learning weights, checkpoints and runs
+*.pt
+*.pth
+*.log
+runs/
+checkpoints/
