@@ -40,7 +40,7 @@ PADDING = 12
 class GameVisualizer:
     def __init__(self):
         pygame.init()
-        pygame.display.set_caption("EngReflex AI - 2048")
+        pygame.display.set_caption("AI - 2048")
         self.screen = pygame.display.set_mode((WINDOW_SIZE, WINDOW_SIZE))
         self.clock = pygame.time.Clock()
         self.board = Board2048()
