@@ -46,4 +46,4 @@ def run_ai_game():
         visualizer.clock.tick(30)
 
 if __name__ == "__main__":
-    run_ai_game()
+    run_ai_game() 
