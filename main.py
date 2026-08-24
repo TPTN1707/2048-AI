@@ -1,49 +1,151 @@
+# main.py
 import sys
+import os
 import pygame
+import torch
+import numpy as np
+
+os.makedirs("checkpoints", exist_ok=True)
+
+from src.engine.board import Board2048
 from src.gui.visualizer import GameVisualizer
 from src.agents.expectimax import ExpectimaxAgent
+from src.agents.dqn_agent import DQNAgent
 
-def run_ai_game():
-    """Main execution loop where the Expectimax AI plays 2048 automatically"""
-    # Initialize the Pygame visualizer
+# Choose your execution mode:
+# - "play_expectimax": Play with GUI using Expectimax Search Agent
+# - "train_dqn": Train the Deep Q-Network Agent (No GUI, maximum speed)
+# - "play_dqn": Play with GUI using the trained DQN Agent weights
+MODE = "train_dqn" 
+
+MODEL_PATH = "checkpoints/dqn_2048.pth"
+
+def train_dqn_agent(episodes=2000):
+    """Train the DQN Agent over multiple episodes without GUI for maximum speed"""
+    board = Board2048()
+    # Initialize the DQN Agent
+    agent = DQNAgent()
+    
+    print(f"--- Starting DQN Training for {episodes} episodes ---")
+    
+    for ep in range(1, episodes + 1):
+        board.reset()
+        state = board.grid
+        done = False
+        
+        while not done:
+            # 1. Select action using epsilon-greedy policy
+            action = agent.select_move(board)
+            
+            # 2. Execute action
+            prev_score = board.score
+            moved = board.move(action)
+            next_state = board.grid
+            
+            # 3. Calculate Reward: score gained in this step
+            reward = board.score - prev_score
+            
+            # Give a small penalty if AI chose an invalid move that didn't change the board
+            if not moved:
+                reward = -10
+            
+            done = board.is_game_over()
+            if done:
+                # Heavy penalty for dying
+                reward = -500 
+
+            # 4. Store transition in replay buffer
+            agent.remember(state, action, reward, next_state, done)
+            
+            # 5. Train the network weights
+            agent.train_step()
+            
+            # Update current state
+            state = next_state
+
+        # Sync policy network to target network periodically at end of episode
+        if ep % 10 == 0:
+            agent.update_target_network()
+
+        # Log training progress every 10 episodes
+        if ep % 10 == 0:
+            max_tile = np.max(board.grid)
+            print(f"Episode {ep:4d}/{episodes} | Score: {board.score:5d} | Max Tile: {max_tile:4d} | Epsilon: {agent.epsilon:.4f} | Memory: {len(agent.memory)}")
+
+        # Periodically save model checkpoints every 100 episodes
+        if ep % 100 == 0:
+            torch.save(agent.policy_net.state_dict(), MODEL_PATH)
+            print(f"--> Saved checkpoint to {MODEL_PATH} at episode {ep}")
+
+    print("--- Training Complete ---")
+
+
+def play_expectimax():
+    """Play 2048 with Pygame GUI using Expectimax Agent"""
     visualizer = GameVisualizer()
-    
-    # Initialize the Expectimax AI Agent (Depth 3 is a sweet spot for speed vs intelligence)
     ai_agent = ExpectimaxAgent(max_depth=3)
-    
-    # Mapping directions to text for terminal logging
     directions_map = {0: "LEFT", 1: "UP", 2: "RIGHT", 3: "DOWN"}
     
+    print("--- Running Expectimax Agent with GUI ---")
     running = True
-    print("--- 2048 AI Gym: Expectimax Mode Activated ---")
-    
     while running:
-        # 1. Handle standard OS window close events
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
                 pygame.quit()
                 sys.exit()
 
-        # 2. If the game is not over, let the AI make a decision
         if not visualizer.board.is_game_over():
-            # AI analyzes the board state and selects the best move
             best_move = ai_agent.select_move(visualizer.board)
-            
-            # Print decision to terminal for monitoring
-            print(f"AI Decision: {directions_map[best_move]} | Current Score: {visualizer.board.score}")
-            
-            # Execute the move on the board
+            print(f"AI Decision: {directions_map[best_move]} | Score: {visualizer.board.score}")
             visualizer.board.move(best_move)
-            
-            # Optional small delay (in milliseconds) to make the gameplay watchable
             pygame.time.delay(50) 
             
-        # 3. Draw the updated board on Pygame window
         visualizer.draw_board()
-        
-        # Maintain frame rate
         visualizer.clock.tick(30)
 
+
+def play_dqn():
+    """Load trained DQN weights and play 2048 with Pygame GUI"""
+    visualizer = GameVisualizer()
+    ai_agent = DQNAgent(epsilon=0.0) # Set epsilon to 0 to force 100% exploitation (no random moves)
+    
+    # Check if a trained model checkpoint exists
+    if not os.path.exists(MODEL_PATH):
+        print(f"Error: No trained model checkpoint found at {MODEL_PATH}. Please train the model first using MODE = 'train_dqn'.")
+        pygame.quit()
+        return
+
+    # Load the trained weights
+    print(f"Loading trained DQN model weights from {MODEL_PATH}...")
+    ai_agent.policy_net.load_state_dict(torch.load(MODEL_PATH, map_location=torch.device('cpu')))
+    ai_agent.policy_net.eval()
+
+    directions_map = {0: "LEFT", 1: "UP", 2: "RIGHT", 3: "DOWN"}
+    
+    print("--- Running Trained DQN Agent with GUI ---")
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+                pygame.quit()
+                sys.exit()
+
+        if not visualizer.board.is_game_over():
+            best_move = ai_agent.select_move(visualizer.board)
+            print(f"DQN Decision: {directions_map[best_move]} | Score: {visualizer.board.score}")
+            visualizer.board.move(best_move)
+            pygame.time.delay(100) # Slightly slower delay to observe the network's behavior
+            
+        visualizer.draw_board()
+        visualizer.clock.tick(30)
+
+
 if __name__ == "__main__":
-    run_ai_game() 
+    if MODE == "train_dqn":
+        train_dqn_agent()
+    elif MODE == "play_dqn":
+        play_dqn()
+    elif MODE == "play_expectimax":
+        play_expectimax()
