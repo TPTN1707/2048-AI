@@ -54,7 +54,8 @@ class DQNAgent(BaseAgent):
         """Convert standard 2048 grid values to log2 scaled flat array of size 16"""
         flat_grid = np.array(grid).flatten()
         # Apply log2 scaling to prevent exploding values: 0->0, 2->1, 4->2, 8->3...
-        normalized = np.where(flat_grid > 0, np.log2(flat_grid), 0.0)
+        with np.errstate(divide='ignore'):
+            normalized = np.where(flat_grid > 0, np.log2(flat_grid), 0.0)
         return torch.tensor(normalized, dtype=torch.float32)
 
     def select_move(self, board):
