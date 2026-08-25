@@ -21,12 +21,11 @@ MODE = "play_dqn"
 MODEL_PATH = "checkpoints/dqn_2048.pth"
 
 def train_dqn_agent(episodes=2000):
-    """Train the DQN Agent over multiple episodes without GUI for maximum speed"""
+    """Train the DQN Agent over multiple episodes with customized reward shaping"""
     board = Board2048()
-    # Initialize the DQN Agent
     agent = DQNAgent()
     
-    print(f"--- Starting DQN Training for {episodes} episodes ---")
+    print(f"--- Starting DQN Training with Reward Shaping for {episodes} episodes ---")
     
     for ep in range(1, episodes + 1):
         board.reset()
@@ -42,17 +41,29 @@ def train_dqn_agent(episodes=2000):
             moved = board.move(action)
             next_state = board.grid
             
-            # 3. Calculate Reward: score gained in this step
+            # 3. Custom Reward Shaping
+            # Base Reward: Actual score gained from merges
             reward = board.score - prev_score
             
-            # Give a small penalty if AI chose an invalid move that didn't change the board
+            # Penalty if AI chose an invalid move that didn't change the board
             if not moved:
                 reward = -10
+            else:
+                # Reward component A: Keeping empty cells open
+                empty_cells = sum(row.count(0) for row in board.grid)
+                reward += empty_cells * 5.0
+                
+                # Reward component B: Corner Gradient Strategy
+                max_tile = np.max(board.grid)
+                # Check if the highest tile is locked at the bottom-right corner (3, 3)
+                if board.grid[3][3] == max_tile:
+                    reward += max_tile * 0.1 # Dynamic reward for keeping corner strategy
+                else:
+                    reward -= max_tile * 0.1 # Penalty for losing the corner position
             
             done = board.is_game_over()
             if done:
-                # Heavy penalty for dying
-                reward = -500 
+                reward = -500 # Heavy penalty for losing
 
             # 4. Store transition in replay buffer
             agent.remember(state, action, reward, next_state, done)
@@ -63,7 +74,7 @@ def train_dqn_agent(episodes=2000):
             # Update current state
             state = next_state
 
-        # Sync policy network to target network periodically at end of episode
+        # Sync target network
         if ep % 10 == 0:
             agent.update_target_network()
 
@@ -72,7 +83,7 @@ def train_dqn_agent(episodes=2000):
             max_tile = np.max(board.grid)
             print(f"Episode {ep:4d}/{episodes} | Score: {board.score:5d} | Max Tile: {max_tile:4d} | Epsilon: {agent.epsilon:.4f} | Memory: {len(agent.memory)}")
 
-        # Periodically save model checkpoints every 100 episodes
+        # Periodically save checkpoints every 100 episodes
         if ep % 100 == 0:
             torch.save(agent.policy_net.state_dict(), MODEL_PATH)
             print(f"--> Saved checkpoint to {MODEL_PATH} at episode {ep}")
