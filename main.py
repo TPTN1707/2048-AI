@@ -16,7 +16,7 @@ from src.agents.dqn_agent import DQNAgent
 # - "play_expectimax": Play with GUI using Expectimax Search Agent
 # - "train_dqn": Train the Deep Q-Network Agent (No GUI, maximum speed)
 # - "play_dqn": Play with GUI using the trained DQN Agent weights
-MODE = "train_dqn" 
+MODE = "play_dqn" 
 
 MODEL_PATH = "checkpoints/dqn_2048.pth"
 
