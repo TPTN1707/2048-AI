@@ -15,10 +15,10 @@ from src.agents.base_agent import BaseAgent
 class QNetwork(nn.Module):
     def __init__(self):
         super(QNetwork, self).__init__()
-        # Input size is now 256 (16 cells * 16 one-hot representation states)
-        self.fc1 = nn.Linear(256, 256)
-        self.fc2 = nn.Linear(256, 256)
-        self.fc3 = nn.Linear(256, 128)
+        # Input size: 16 flat features representing the 4x4 grid
+        self.fc1 = nn.Linear(16, 128)
+        self.fc2 = nn.Linear(128, 128)
+        self.fc3 = nn.Linear(128, 128)
         # Output size: 4 actions representing (0:L, 1:U, 2:R, 3:D)
         self.out = nn.Linear(128, 4)
 
@@ -52,18 +52,12 @@ class DQNAgent(BaseAgent):
         self.criterion = nn.MSELoss()
 
     def _normalize_state(self, grid):
-        """Convert standard 4x4 grid into a flat 256-sized one-hot encoded vector"""
+        """Convert standard 2048 grid values to log2 scaled flat array of size 16"""
         flat_grid = np.array(grid).flatten()
-        # Initialize a 16x16 one-hot matrix (16 cells, each has 16 possible power states)
-        one_hot = np.zeros((16, 16), dtype=np.float32)
-        
-        for i, val in enumerate(flat_grid):
-            # Map tile values to power exponents: 0->0, 2->1, 4->2, 8->3... 32768->15
-            power = int(np.log2(val)) if val > 0 else 0
-            power = min(power, 15) # Clip to max supported index 15
-            one_hot[i, power] = 1.0
-            
-        return torch.tensor(one_hot.flatten(), dtype=torch.float32)
+        # Suppress the divide by zero warning during log2(0) calculation
+        with np.errstate(divide='ignore'):
+            normalized = np.where(flat_grid > 0, np.log2(flat_grid), 0.0)
+        return torch.tensor(normalized, dtype=torch.float32)
 
     def select_move(self, board):
         """Select a move using an epsilon-greedy strategy"""
