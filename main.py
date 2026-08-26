@@ -19,12 +19,14 @@ MODE = "play_dqn"
 
 MODEL_PATH = "checkpoints/dqn_2048.pth"
 
+# main.py (Chỉ cập nhật hàm train_dqn_agent)
+
 def train_dqn_agent(episodes=2000):
-    """Train the DQN Agent over multiple episodes with customized reward shaping"""
+    """Train the DQN Agent over multiple episodes with simplified soft rewards"""
     board = Board2048()
     agent = DQNAgent()
     
-    print(f"--- Starting DQN Training with Reward Shaping for {episodes} episodes ---")
+    print(f"--- Starting DQN Training with Simplified Soft Rewards for {episodes} episodes ---")
     
     for ep in range(1, episodes + 1):
         board.reset()
@@ -40,29 +42,21 @@ def train_dqn_agent(episodes=2000):
             moved = board.move(action)
             next_state = board.grid
             
-            # 3. Custom Reward Shaping
+            # 3. Simplified Soft Reward Design
             # Base Reward: Actual score gained from merges
             reward = board.score - prev_score
             
-            # Penalty if AI chose an invalid move that didn't change the board
+            # Gentle penalty if AI chose an invalid move
             if not moved:
                 reward = -10
             else:
-                # Reward component A: Keeping empty cells open
+                # Soft encouragement for keeping empty cells open (prevents clogging)
                 empty_cells = sum(row.count(0) for row in board.grid)
-                reward += empty_cells * 5.0
-                
-                # Reward component B: Corner Gradient Strategy
-                max_tile = np.max(board.grid)
-                # Check if the highest tile is locked at the bottom-right corner (3, 3)
-                if board.grid[3][3] == max_tile:
-                    reward += max_tile * 0.1 # Dynamic reward for keeping corner strategy
-                else:
-                    reward -= max_tile * 0.1 # Penalty for losing the corner position
+                reward += empty_cells * 1.0 # Very soft weight
             
             done = board.is_game_over()
             if done:
-                reward = -500 # Heavy penalty for losing
+                reward = -200 # Softened penalty for losing
 
             # 4. Store transition in replay buffer
             agent.remember(state, action, reward, next_state, done)
@@ -88,7 +82,6 @@ def train_dqn_agent(episodes=2000):
             print(f"--> Saved checkpoint to {MODEL_PATH} at episode {ep}")
 
     print("--- Training Complete ---")
-
 
 def play_expectimax():
     """Play 2048 with Pygame GUI using Expectimax Agent"""
