@@ -130,3 +130,13 @@ class NTupleAgent(BaseAgent):
         for pattern_id, indices in enumerate(state_indices):
             for idx in indices:
                 self.luts[pattern_id][idx] += update_step
+
+    def save_weights(self, filepath):
+        """Save the Lookup Tables (LUTs) into a compressed .npz file"""
+        np.savez_compressed(filepath, lut0=self.luts[0], lut1=self.luts[1])
+
+    def load_weights(self, filepath):
+        """Load the Lookup Tables (LUTs) from a compressed .npz file"""
+        data = np.load(filepath)
+        self.luts[0] = data['lut0']
+        self.luts[1] = data['lut1']
