@@ -4,10 +4,9 @@ import random
 import numpy as np
 import copy
 
-# Resolve project root path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 from src.agents.base_agent import BaseAgent
-from src.config import Config
+
 
 # Define index representations of the 4x4 grid:
 # 0  1  2  3
