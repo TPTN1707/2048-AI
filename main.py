@@ -12,17 +12,45 @@ from src.agents.expectimax import ExpectimaxAgent
 from src.agents.dqn_agent import DQNAgent
 from src.agents.ntuple_agent import NTupleAgent
 from src.utils.metrics import MetricsTracker
+from src.agents.hybrid_agent import HybridAgent
 
 # Execution modes:
 # - "play_expectimax": Play with GUI using Expectimax Agent
 # - "train_dqn": Train the DQN Agent (No GUI)
 # - "play_dqn": Play with GUI using trained DQN Agent
-# - "train_ntuple": Train the N-Tuple Agent (No GUI, ultra high-speed)
+# - "train_ntuple": Train the N-Tuple Agent (No GUI)
 # - "play_ntuple": Play with GUI using trained N-Tuple Agent
-MODE = "play_ntuple" 
+# - "play_hybrid": Play with GUI using the super Hybrid Agent (Expectimax + N-Tuple)
+MODE = "play_hybrid" 
 
 DQN_MODEL_PATH = "checkpoints/dqn_2048.pth"
-NTUPLE_MODEL_PATH = "checkpoints/ntuple_weights.npz" 
+NTUPLE_MODEL_PATH = "checkpoints/ntuple_weights.npz"
+
+def play_hybrid():
+    """Play 2048 with Pygame GUI using the super Hybrid Agent (Expectimax + N-Tuple)"""
+    visualizer = GameVisualizer()
+    ai_agent = HybridAgent(weights_path=NTUPLE_MODEL_PATH, max_depth=3)
+    
+    directions_map = {0: "LEFT", 1: "UP", 2: "RIGHT", 3: "DOWN"}
+    
+    print("--- Running Super Hybrid Agent (Expectimax + N-Tuple) with GUI ---")
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+                pygame.quit()
+                sys.exit()
+
+        if not visualizer.board.is_game_over():
+            best_move = ai_agent.select_move(visualizer.board)
+            print(f"Hybrid Decision: {directions_map[best_move]} | Score: {visualizer.board.score}")
+            visualizer.board.move(best_move)
+            pygame.time.delay(50) 
+            
+        visualizer.draw_board()
+        visualizer.clock.tick(30)
+
 
 def train_ntuple_agent(episodes=50000):
     """Train the N-Tuple TD-Learning agent over thousands of episodes and track progress"""
@@ -193,3 +221,5 @@ if __name__ == "__main__":
         play_dqn()
     elif MODE == "play_expectimax":
         play_expectimax()
+    elif MODE == "play_hybrid":
+        play_hybrid()
