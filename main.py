@@ -11,6 +11,7 @@ from src.gui.visualizer import GameVisualizer
 from src.agents.expectimax import ExpectimaxAgent
 from src.agents.dqn_agent import DQNAgent
 from src.agents.ntuple_agent import NTupleAgent
+from src.utils.metrics import MetricsTracker
 
 # Execution modes:
 # - "play_expectimax": Play with GUI using Expectimax Agent
@@ -18,15 +19,16 @@ from src.agents.ntuple_agent import NTupleAgent
 # - "play_dqn": Play with GUI using trained DQN Agent
 # - "train_ntuple": Train the N-Tuple Agent (No GUI, ultra high-speed)
 # - "play_ntuple": Play with GUI using trained N-Tuple Agent
-MODE = "train_ntuple" 
+MODE = "play_ntuple" 
 
 DQN_MODEL_PATH = "checkpoints/dqn_2048.pth"
-NTUPLE_MODEL_PATH = "checkpoints/ntuple_weights.npz"
+NTUPLE_MODEL_PATH = "checkpoints/ntuple_weights.npz" 
 
 def train_ntuple_agent(episodes=50000):
-    """Train the N-Tuple TD-Learning agent over thousands of episodes at ultra-high speed"""
+    """Train the N-Tuple TD-Learning agent over thousands of episodes and track progress"""
     board = Board2048()
     agent = NTupleAgent(lr=0.1, gamma=0.99)
+    tracker = MetricsTracker("checkpoints/ntuple_metrics.csv")
     
     print(f"--- Starting N-Tuple TD-Learning Training for {episodes} episodes ---")
     
@@ -36,31 +38,28 @@ def train_ntuple_agent(episodes=50000):
         done = False
         
         while not done:
-            # 1. Select best move based on current LUT state values
             action = agent.select_move(board)
-            
-            # 2. Execute move
             prev_score = board.score
             moved = board.move(action)
             next_state = board.grid
-            
-            # 3. Reward is the exact score gained from merges
             reward = board.score - prev_score
-            
-            # 4. Perform TD(0) learning update
             agent.learn(state, reward, next_state, board.is_game_over())
             
             state = next_state
             done = board.is_game_over()
 
-        # Log training progress every 1000 episodes
+        # Log metrics to CSV for every single episode
+        max_tile = int(np.max(board.grid))
+        tracker.log_episode(ep, board.score, max_tile)
+
+        # Log training progress to terminal every 1000 episodes
         if ep % 1000 == 0:
-            max_tile = np.max(board.grid)
             print(f"Episode {ep:5d}/{episodes} | Score: {board.score:5d} | Max Tile: {max_tile:5d}")
 
-        # Save weights every 5000 episodes
+        # Save weights and generate progress plot every 5000 episodes
         if ep % 5000 == 0:
             agent.save_weights(NTUPLE_MODEL_PATH)
+            tracker.generate_learning_plot("checkpoints/ntuple_training_plot.png")
             print(f"--> Saved N-Tuple weights to {NTUPLE_MODEL_PATH}")
 
     print("--- N-Tuple Training Complete ---")
