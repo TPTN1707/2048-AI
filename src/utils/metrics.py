@@ -1,5 +1,6 @@
 import os
 import csv
+import numpy as np
 import matplotlib.pyplot as plt
 
 class MetricsTracker:
@@ -22,7 +23,6 @@ class MetricsTracker:
         self.scores.append(score)
         self.max_tiles.append(max_tile)
         
-        # Write directly to CSV to prevent data loss in case of manual interruptions
         with open(self.csv_filepath, mode='a', newline='') as f:
             writer = csv.writer(f)
             writer.writerow([episode, score, max_tile])
@@ -32,16 +32,13 @@ class MetricsTracker:
         if not self.episodes:
             return
             
-        # Create a figure with 2 subplots vertically
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
         
         # Plot 1: Scores trend
         ax1.plot(self.episodes, self.scores, color='tab:blue', alpha=0.6, label='Episode Score')
+        
         # Calculate and plot running average of 100 episodes to smooth out noise
         if len(self.scores) >= 100:
-            running_avg = [np.mean(self.scores[max(0, i-100):i+1]) for i in range(len(self.scores))]
-            # We import numpy locally inside the function to keep dependency clean
-            import numpy as np
             running_avg = [np.mean(self.scores[max(0, idx-100):idx+1]) for idx in range(len(self.scores))]
             ax1.plot(self.episodes, running_avg, color='darkblue', linewidth=2, label='100-Ep Running Avg')
             
@@ -56,7 +53,7 @@ class MetricsTracker:
         ax2.set_title("Max Tile Reached")
         ax2.set_xlabel("Episodes")
         ax2.set_ylabel("Tile Value")
-        ax2.set_yscale('log', base=2) # Use logarithmic scale base 2 for tile values
+        ax2.set_yscale('log', base=2) # Use logarithmic scale base 2
         ax2.grid(True, linestyle='--', alpha=0.5)
 
         plt.tight_layout()
